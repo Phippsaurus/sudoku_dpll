@@ -1,3 +1,6 @@
+#![feature(test)]
+extern crate test;
+
 mod sudoku;
 
 use sudoku::*;

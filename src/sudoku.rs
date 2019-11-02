@@ -37,6 +37,7 @@ impl SudokuCell {
 fn sudoku_constraints() -> CNF<SudokuCell> {
     let mut cnf = vec![];
 
+    // No two cells in a row can contain the same value
     for row in 0..8 {
         for other in row + 1..9 {
             for col in 0..9 {
@@ -50,6 +51,7 @@ fn sudoku_constraints() -> CNF<SudokuCell> {
         }
     }
 
+    // No two cells in a column can contain the same value
     for row in 0..9 {
         for col in 0..8 {
             for other in col + 1..9 {
@@ -63,6 +65,7 @@ fn sudoku_constraints() -> CNF<SudokuCell> {
         }
     }
 
+    // No two cells in a 3x3 block can contain the same value
     for horizontal in 0..3 {
         for vertical in 0..3 {
             let block_coord = |coord: u8| (3 * horizontal + coord / 3, 3 * vertical + coord % 3);
@@ -86,6 +89,9 @@ fn sudoku_constraints() -> CNF<SudokuCell> {
 
 pub(crate) fn solve_sudoku(sudoku: &str) -> Option<String> {
     let mut cnf = sudoku_constraints();
+
+    // Parse the grid. Add unit constraints for already assigned cells and
+    // constrain empty cells by all values from 1 - 9.
     for (row, line) in (0..9).zip(sudoku.lines()) {
         for (col, cell) in (0..9).zip(line.chars().chain(std::iter::repeat(' '))) {
             match cell {
@@ -102,7 +108,10 @@ pub(crate) fn solve_sudoku(sudoku: &str) -> Option<String> {
             }
         }
     }
+
     let solution = solve(&cnf)?;
+
+    // Generate the solved sudoku from the assignments which led to the solution
     let mut grid = [[' '; 9]; 9];
     for (row, col, val) in solution
         .iter()
@@ -135,46 +144,46 @@ mod tests {
         // +-+-+
         let cnf = vec![
             vec![
-                Literal(SudokuCell::new(0, 0, 1), false),
-                Literal(SudokuCell::new(0, 1, 1), false),
+                Literal::negated(SudokuCell::new(0, 0, 1)),
+                Literal::negated(SudokuCell::new(0, 1, 1)),
             ],
             vec![
-                Literal(SudokuCell::new(1, 0, 1), false),
-                Literal(SudokuCell::new(1, 1, 1), false),
+                Literal::negated(SudokuCell::new(1, 0, 1)),
+                Literal::negated(SudokuCell::new(1, 1, 1)),
             ],
             vec![
-                Literal(SudokuCell::new(0, 0, 1), false),
-                Literal(SudokuCell::new(1, 0, 1), false),
+                Literal::negated(SudokuCell::new(0, 0, 1)),
+                Literal::negated(SudokuCell::new(1, 0, 1)),
             ],
             vec![
-                Literal(SudokuCell::new(0, 1, 1), false),
-                Literal(SudokuCell::new(1, 1, 1), false),
+                Literal::negated(SudokuCell::new(0, 1, 1)),
+                Literal::negated(SudokuCell::new(1, 1, 1)),
             ],
             vec![
-                Literal(SudokuCell::new(0, 0, 2), false),
-                Literal(SudokuCell::new(0, 1, 2), false),
+                Literal::negated(SudokuCell::new(0, 0, 2)),
+                Literal::negated(SudokuCell::new(0, 1, 2)),
             ],
             vec![
-                Literal(SudokuCell::new(1, 0, 2), false),
-                Literal(SudokuCell::new(1, 1, 2), false),
+                Literal::negated(SudokuCell::new(1, 0, 2)),
+                Literal::negated(SudokuCell::new(1, 1, 2)),
             ],
             vec![
-                Literal(SudokuCell::new(0, 0, 2), false),
-                Literal(SudokuCell::new(1, 0, 2), false),
+                Literal::negated(SudokuCell::new(0, 0, 2)),
+                Literal::negated(SudokuCell::new(1, 0, 2)),
             ],
             vec![
-                Literal(SudokuCell::new(0, 1, 2), false),
-                Literal(SudokuCell::new(1, 1, 2), false),
+                Literal::negated(SudokuCell::new(0, 1, 2)),
+                Literal::negated(SudokuCell::new(1, 1, 2)),
             ],
-            vec![Literal(SudokuCell::new(0, 0, 2), true)],
-            vec![Literal(SudokuCell::new(1, 0, 1), true)],
+            vec![Literal::new(SudokuCell::new(0, 0, 2))],
+            vec![Literal::new(SudokuCell::new(1, 0, 1))],
             vec![
-                Literal(SudokuCell::new(0, 1, 1), true),
-                Literal(SudokuCell::new(0, 1, 2), true),
+                Literal::new(SudokuCell::new(0, 1, 1)),
+                Literal::new(SudokuCell::new(0, 1, 2)),
             ],
             vec![
-                Literal(SudokuCell::new(1, 1, 1), true),
-                Literal(SudokuCell::new(1, 1, 2), true),
+                Literal::new(SudokuCell::new(1, 1, 1)),
+                Literal::new(SudokuCell::new(1, 1, 2)),
             ],
         ];
         let solution = solve(&cnf);
@@ -211,6 +220,73 @@ ___419__5
 ____8__79
 "###,
         );
+
+        assert_eq!(
+            Some(
+                r###"534678912
+672195348
+198342567
+859761423
+426853791
+713924856
+961537284
+287419635
+345286179
+"###
+                    .to_string()
+            ),
+            solution
+        );
+    }
+
+    #[test]
+    fn cannot_solve_unsolvable_sudoku() {
+        let solution = solve_sudoku(
+            r###"516849732
+3 76 5
+8 97   65
+135 6 9 7
+472591  6
+96837  5
+253186 74
+6842 75
+791 5 6 8
+"###,
+        );
+
+        assert!(solution.is_none());
+    }
+
+    #[test]
+    fn solve_sudoku_with_multiple_solutions() {
+        let solution = solve_sudoku(
+            r###"286159743
+357648219
+4197__568
+821965437
+693874125
+7453__896
+5682__974
+134597682
+972486351
+"###,
+        );
+
         assert!(solution.is_some());
+    }
+
+    use test::Bencher;
+    #[bench]
+    fn bench_hard_sudoku(b: &mut Bencher) {
+        let sudoku = r"    74316
+   6 384
+     85
+7258   34
+    3  5
+     2798
+  894
+ 4  859
+971326485";
+        b.iter(|| solve_sudoku(sudoku));
     }
 }
