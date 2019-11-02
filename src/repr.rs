@@ -1,7 +1,22 @@
 use std::ops::Not;
 
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
-pub(crate) struct Literal<Atom>(pub Atom, pub bool);
+pub struct Literal<Atom>(pub(crate) Atom, pub(crate) bool);
+
+impl<Atom> Literal<Atom> {
+    pub fn new(atom: Atom) -> Self {
+        Self(atom, true)
+    }
+    pub fn negated(atom: Atom) -> Self {
+        Self(atom, false)
+    }
+    pub fn value(&self) -> bool {
+        self.1
+    }
+    pub fn atom(self) -> Atom {
+        self.0
+    }
+}
 
 impl<Atom> Not for Literal<Atom>
 where
@@ -23,8 +38,8 @@ where
     }
 }
 
-pub(crate) type Clause<Atom> = Vec<Literal<Atom>>;
+pub type Clause<Atom> = Vec<Literal<Atom>>;
 
-pub(crate) type CNF<Atom> = Vec<Clause<Atom>>;
+pub type CNF<Atom> = Vec<Clause<Atom>>;
 
-pub(crate) type Assignment<Atom> = Vec<Literal<Atom>>;
+pub type Assignment<Atom> = Vec<Literal<Atom>>;

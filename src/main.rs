@@ -1,7 +1,6 @@
-mod repr;
-mod solve;
+mod sudoku;
 
-use solve::*;
+use sudoku::*;
 
 fn main() {
     if let Some(sudoku) = std::env::args().nth(1) {
